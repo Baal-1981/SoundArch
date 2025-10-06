@@ -1,15 +1,26 @@
+# === ANDROID ===
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.gradle/
 local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# === OS ===
+Thumbs.db
+desktop.ini
+
+# === LOGS ===
+*.log
+
+# === ANDROID STUDIO ===
+.cache/
+*.hprof
+
+# === NDK/CMake ===
+.cmake/
+*.so
+obj/
