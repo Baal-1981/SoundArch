@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">SoundArch</string>
+    <string name="title_soundarch">SoundArch Native Audio</string>
+    <string name="start_audio">Start Audio</string>
+    <string name="stop_audio">Stop Audio</string>
+</resources>
