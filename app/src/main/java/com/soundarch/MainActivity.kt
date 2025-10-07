@@ -12,7 +12,7 @@ import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.soundarch.ui.navigation.NavGraph
-import com.soundarch.ui.theme.SoundArchTheme
+import com.soundarch.theme.SoundArchTheme
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -137,8 +137,8 @@ class MainActivity : ComponentActivity() {
                 var agcTargetLevel by remember { mutableStateOf(-20f) }
                 var agcMaxGain by remember { mutableStateOf(25f) }
                 var agcMinGain by remember { mutableStateOf(-10f) }
-                var agcAttackTime by remember { mutableStateOf(3f) }
-                var agcReleaseTime by remember { mutableStateOf(15f) }
+                var agcAttackTime by remember { mutableStateOf(0.1f) }  // Fast attack: 100ms
+                var agcReleaseTime by remember { mutableStateOf(0.5f) }  // Fast release: 500ms
                 var agcNoiseThreshold by remember { mutableStateOf(-55f) }
                 var agcWindowSize by remember { mutableStateOf(0.1f) }
 
@@ -152,12 +152,13 @@ class MainActivity : ComponentActivity() {
                 // Update monitoring périodique
                 LaunchedEffect(Unit) {
                     while (true) {
-                        delay(500) // Update toutes les 500ms
+                        delay(1000) // Update every second for better CPU delta measurement
                         try {
                             cpuUsage = getCPUUsage()
                             memoryUsage = getMemoryUsage()
+                            Log.i("PerformanceMonitor", "📊 CPU: ${String.format("%.2f", cpuUsage)}% | MEM: ${memoryUsage / 1024}MB")
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error reading system stats: ${e.message}")
+                            Log.e(TAG, "Error reading system stats", e)
                         }
                     }
                 }
@@ -317,7 +318,10 @@ class MainActivity : ComponentActivity() {
                     compressorMakeupGain = compressorMakeupGain,
                     limiterEnabled = limiterEnabled,
                     limiterThreshold = limiterThreshold,
-                    limiterRelease = limiterRelease
+                    limiterRelease = limiterRelease,
+                    getAGCCurrentGain = { getAGCCurrentGain() },
+                    getAGCCurrentLevel = { getAGCCurrentLevel() },
+                    getLimiterGainReduction = { getLimiterGainReduction() }
                 )
             }
         }

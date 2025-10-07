@@ -9,6 +9,7 @@
 #include <memory>
 #include <cstdio>
 #include <cstring>
+#include <cerrno>
 #include <unistd.h>
 #include <algorithm>
 
@@ -39,26 +40,26 @@ using namespace soundarch;
 namespace {
 
 // Audio Engine
-    static OboeEngine gEngine;
+    OboeEngine gEngine;
 
 // DSP Modules (heap-allocated for controlled lifecycle)
-    static std::unique_ptr<dsp::Equalizer> gEqualizer;
-    static std::unique_ptr<dsp::AGC> gAGC;
-    static std::unique_ptr<dsp::Compressor> gCompressor;
-    static std::unique_ptr<dsp::Limiter> gLimiter;
+    std::unique_ptr<dsp::Equalizer> gEqualizer;
+    std::unique_ptr<dsp::AGC> gAGC;
+    std::unique_ptr<dsp::Compressor> gCompressor;
+    std::unique_ptr<dsp::Limiter> gLimiter;
 
 // Enable/Disable flags (atomic for thread safety)
-    static std::atomic<bool> gAGCEnabled{true};
-    static std::atomic<bool> gCompressorEnabled{true};
-    static std::atomic<bool> gLimiterEnabled{true};
+    std::atomic<bool> gAGCEnabled{true};
+    std::atomic<bool> gCompressorEnabled{true};
+    std::atomic<bool> gLimiterEnabled{true};
 
 // JNI Cache
-    static JavaVM* gJvm = nullptr;
-    static jobject gActivity = nullptr;
+    JavaVM* gJvm = nullptr;
+    jobject gActivity = nullptr;
 
 // Performance Monitoring
-    static std::atomic<uint64_t> gProcessedFrames{0};
-    static std::atomic<uint32_t> gDroppedFrames{0};
+    std::atomic<uint64_t> gProcessedFrames{0};
+    std::atomic<uint32_t> gDroppedFrames{0};
 
 } // anonymous namespace
 
@@ -66,9 +67,12 @@ namespace {
 // ⚡ AUDIO CALLBACK - OPTIMIZED (Zero Allocation)
 // ==============================================================================
 
+// NOLINTNEXTLINE(readability-non-const-parameter) - input must be non-const to match OboeEngine std::function signature
 static void audioCallback(float* input, float* output, int32_t numFrames) noexcept {
     // ✅ CRITICAL: This runs on real-time audio thread
     // NO malloc, NO new, NO vector, NO mutex, NO system calls
+
+    if (!input || !output) return;  // Safety check for null pointers
 
     for (int32_t i = 0; i < numFrames; ++i) {
         float sample = input[i];
@@ -131,11 +135,11 @@ Java_com_soundarch_MainActivity_startAudio(JNIEnv* env, jobject thiz) {
         gAGC->setTargetLevel(-20.0f);
         gAGC->setMaxGain(25.0f);
         gAGC->setMinGain(-10.0f);
-        gAGC->setAttackTime(3.0f);
-        gAGC->setReleaseTime(15.0f);
+        gAGC->setAttackTime(0.1f);   // Fast attack: 100ms
+        gAGC->setReleaseTime(0.5f);  // Fast release: 500ms
         gAGC->setNoiseThreshold(-55.0f);
         gAGC->setWindowSize(0.1f);
-        LOGI("✅ AGC initialized (Target=-20dB, MaxGain=+25dB)");
+        LOGI("✅ AGC initialized (Target=-20dB, Attack=100ms, Release=500ms)");
     }
 
     if (!gEqualizer) {
@@ -175,7 +179,7 @@ Java_com_soundarch_MainActivity_startAudio(JNIEnv* env, jobject thiz) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_stopAudio(JNIEnv* env, jobject /*thiz*/) {
+Java_com_soundarch_MainActivity_stopAudio([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     gEngine.stop();
 
     const uint64_t totalFrames = gProcessedFrames.load(std::memory_order_relaxed);
@@ -218,7 +222,7 @@ Java_com_soundarch_MainActivity_setEqBands(JNIEnv* env, jobject /*thiz*/, jfloat
 // ==============================================================================
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCTargetLevel(JNIEnv* env, jobject /*thiz*/, jfloat targetDb) {
+Java_com_soundarch_MainActivity_setAGCTargetLevel([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat targetDb) {
     if (gAGC) {
         gAGC->setTargetLevel(targetDb);
         LOGI("🎯 AGC Target: %.1f dB", targetDb);
@@ -226,7 +230,7 @@ Java_com_soundarch_MainActivity_setAGCTargetLevel(JNIEnv* env, jobject /*thiz*/,
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCMaxGain(JNIEnv* env, jobject /*thiz*/, jfloat maxGainDb) {
+Java_com_soundarch_MainActivity_setAGCMaxGain([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat maxGainDb) {
     if (gAGC) {
         gAGC->setMaxGain(maxGainDb);
         LOGI("📈 AGC MaxGain: +%.1f dB", maxGainDb);
@@ -234,7 +238,7 @@ Java_com_soundarch_MainActivity_setAGCMaxGain(JNIEnv* env, jobject /*thiz*/, jfl
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCMinGain(JNIEnv* env, jobject /*thiz*/, jfloat minGainDb) {
+Java_com_soundarch_MainActivity_setAGCMinGain([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat minGainDb) {
     if (gAGC) {
         gAGC->setMinGain(minGainDb);
         LOGI("📉 AGC MinGain: %.1f dB", minGainDb);
@@ -242,7 +246,7 @@ Java_com_soundarch_MainActivity_setAGCMinGain(JNIEnv* env, jobject /*thiz*/, jfl
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCAttackTime(JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
+Java_com_soundarch_MainActivity_setAGCAttackTime([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
     if (gAGC) {
         gAGC->setAttackTime(seconds);
         LOGI("⚡ AGC Attack: %.2f s", seconds);
@@ -250,7 +254,7 @@ Java_com_soundarch_MainActivity_setAGCAttackTime(JNIEnv* env, jobject /*thiz*/, 
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCReleaseTime(JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
+Java_com_soundarch_MainActivity_setAGCReleaseTime([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
     if (gAGC) {
         gAGC->setReleaseTime(seconds);
         LOGI("🕒 AGC Release: %.2f s", seconds);
@@ -258,7 +262,7 @@ Java_com_soundarch_MainActivity_setAGCReleaseTime(JNIEnv* env, jobject /*thiz*/,
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCNoiseThreshold(JNIEnv* env, jobject /*thiz*/, jfloat thresholdDb) {
+Java_com_soundarch_MainActivity_setAGCNoiseThreshold([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat thresholdDb) {
     if (gAGC) {
         gAGC->setNoiseThreshold(thresholdDb);
         LOGI("🔇 AGC NoiseGate: %.1f dB", thresholdDb);
@@ -266,7 +270,7 @@ Java_com_soundarch_MainActivity_setAGCNoiseThreshold(JNIEnv* env, jobject /*thiz
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCWindowSize(JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
+Java_com_soundarch_MainActivity_setAGCWindowSize([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jfloat seconds) {
     if (gAGC) {
         gAGC->setWindowSize(seconds);
         LOGI("⏱️ AGC Window: %.2f s", seconds);
@@ -274,18 +278,18 @@ Java_com_soundarch_MainActivity_setAGCWindowSize(JNIEnv* env, jobject /*thiz*/, 
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setAGCEnabled(JNIEnv* env, jobject /*thiz*/, jboolean enabled) {
+Java_com_soundarch_MainActivity_setAGCEnabled([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jboolean enabled) {
     gAGCEnabled.store(enabled, std::memory_order_relaxed);
     LOGI("%s AGC %s", enabled ? "✅" : "❌", enabled ? "ENABLED" : "DISABLED");
 }
 
-JNIEXPORT jfloat JNICALL
-Java_com_soundarch_MainActivity_getAGCCurrentGain(JNIEnv* env, jobject /*thiz*/) {
+[[nodiscard]] JNIEXPORT jfloat JNICALL
+Java_com_soundarch_MainActivity_getAGCCurrentGain([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     return gAGC ? gAGC->getCurrentGain() : 0.0f;
 }
 
-JNIEXPORT jfloat JNICALL
-Java_com_soundarch_MainActivity_getAGCCurrentLevel(JNIEnv* env, jobject /*thiz*/) {
+[[nodiscard]] JNIEXPORT jfloat JNICALL
+Java_com_soundarch_MainActivity_getAGCCurrentLevel([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     return gAGC ? gAGC->getCurrentLevel() : -60.0f;
 }
 
@@ -295,7 +299,7 @@ Java_com_soundarch_MainActivity_getAGCCurrentLevel(JNIEnv* env, jobject /*thiz*/
 
 JNIEXPORT void JNICALL
 Java_com_soundarch_MainActivity_setCompressor(
-        JNIEnv* env, jobject /*thiz*/,
+        [[maybe_unused]] JNIEnv* env, jobject /*thiz*/,
         jfloat threshold, jfloat ratio, jfloat attack, jfloat release, jfloat makeupGain
 ) {
     if (gCompressor) {
@@ -309,20 +313,14 @@ Java_com_soundarch_MainActivity_setCompressor(
     }
 }
 
-JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setCompressorEnabled(JNIEnv* env, jobject /*thiz*/, jboolean enabled) {
-    gCompressorEnabled.store(enabled, std::memory_order_relaxed);
-    LOGI("%s Compressor %s", enabled ? "✅" : "❌", enabled ? "ENABLED" : "DISABLED");
-}
-
 // ==============================================================================
 // 🚨 LIMITER CONTROLS
 // ==============================================================================
 
 JNIEXPORT void JNICALL
 Java_com_soundarch_MainActivity_setLimiter(
-        JNIEnv* env, jobject /*thiz*/,
-        jfloat threshold, jfloat release, jfloat lookahead
+        [[maybe_unused]] JNIEnv* env, jobject /*thiz*/,
+        jfloat threshold, jfloat release, [[maybe_unused]] jfloat lookahead
 ) {
     if (gLimiter) {
         gLimiter->setThreshold(threshold);
@@ -332,13 +330,13 @@ Java_com_soundarch_MainActivity_setLimiter(
 }
 
 JNIEXPORT void JNICALL
-Java_com_soundarch_MainActivity_setLimiterEnabled(JNIEnv* env, jobject /*thiz*/, jboolean enabled) {
+Java_com_soundarch_MainActivity_setLimiterEnabled([[maybe_unused]] JNIEnv* env, jobject /*thiz*/, jboolean enabled) {
     gLimiterEnabled.store(enabled, std::memory_order_relaxed);
     LOGI("%s Limiter %s", enabled ? "✅" : "❌", enabled ? "ENABLED" : "DISABLED");
 }
 
-JNIEXPORT jfloat JNICALL
-Java_com_soundarch_MainActivity_getLimiterGainReduction(JNIEnv* env, jobject /*thiz*/) {
+[[nodiscard]] JNIEXPORT jfloat JNICALL
+Java_com_soundarch_MainActivity_getLimiterGainReduction([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     return gLimiter ? gLimiter->getGainReduction() : 0.0f;
 }
 
@@ -353,39 +351,18 @@ struct ProcessCPUTimes {
     long long cstime = 0;  // Child system time
 };
 
-static ProcessCPUTimes gLastProcessCPU;
-static long long gLastTotalCPU = 0;
-static bool gFirstProcessRead = true;
-static int gCPUCallCount = 0;
+ProcessCPUTimes gLastProcessCPU;
+long long gLastRealTime = 0;  // Monotonic clock time for CPU measurement
+bool gFirstProcessRead = true;
+int gCPUCallCount = 0;
 
-JNIEXPORT jfloat JNICALL
-Java_com_soundarch_MainActivity_getCPUUsage(JNIEnv* env, jobject /*thiz*/) {
+[[nodiscard]] JNIEXPORT jfloat JNICALL
+Java_com_soundarch_MainActivity_getCPUUsage([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 1️⃣ Read TOTAL system CPU time from /proc/stat
+    // Use simplified process-only CPU measurement (Android compatible)
+    // /proc/self/stat is accessible, /proc/stat may be restricted
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    FILE* statFile = fopen("/proc/stat", "r");
-    if (!statFile) {
-        LOGW("⚠️ Cannot open /proc/stat");
-        return 0.0f;
-    }
 
-    char cpuLabel[16];
-    long long user, nice, system, idle, iowait, irq, softirq;
-
-    int ret = fscanf(statFile, "%s %lld %lld %lld %lld %lld %lld %lld",
-                     cpuLabel, &user, &nice, &system, &idle, &iowait, &irq, &softirq);
-    fclose(statFile);
-
-    if (ret != 8 || strcmp(cpuLabel, "cpu") != 0) {
-        LOGW("⚠️ Failed to parse /proc/stat (ret=%d)", ret);
-        return 0.0f;
-    }
-
-    long long totalCPU = user + nice + system + idle + iowait + irq + softirq;
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 2️⃣ Read OUR process CPU time from /proc/self/stat
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     FILE* processFile = fopen("/proc/self/stat", "r");
     if (!processFile) {
         LOGW("⚠️ Cannot open /proc/self/stat");
@@ -396,7 +373,8 @@ Java_com_soundarch_MainActivity_getCPUUsage(JNIEnv* env, jobject /*thiz*/) {
 
     // Format: pid (comm) state ppid pgrp session tty_nr tpgid flags minflt cminflt majflt cmajflt utime stime cutime cstime
     // We need fields 14-17: utime, stime, cutime, cstime
-    ret = fscanf(processFile,
+    // NOLINTNEXTLINE(cert-err34-c) - fscanf is safe here, return value checked below
+    int ret = fscanf(processFile,
                  "%*d %*s %*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lld %lld %lld %lld",
                  &current.utime, &current.stime, &current.cutime, &current.cstime);
     fclose(processFile);
@@ -406,32 +384,33 @@ Java_com_soundarch_MainActivity_getCPUUsage(JNIEnv* env, jobject /*thiz*/) {
         return 0.0f;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 3️⃣ Calculate CPU usage percentage
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Get current time in clock ticks
+    struct timespec ts = {};
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+        LOGW("⚠️ clock_gettime failed");
+        return 0.0f;
+    }
+    long long currentRealTime = ts.tv_sec * sysconf(_SC_CLK_TCK) +
+                                (ts.tv_nsec * sysconf(_SC_CLK_TCK) / 1000000000LL);
 
     if (gFirstProcessRead) {
         // First read - initialize baseline
         gLastProcessCPU = current;
-        gLastTotalCPU = totalCPU;
+        gLastRealTime = currentRealTime;
         gFirstProcessRead = false;
-        LOGI("📊 CPU Monitoring initialized | TotalCPU: %lld | ProcessTime: %lld",
-             totalCPU, current.utime + current.stime);
+        LOGI("📊 CPU Monitoring initialized | ProcessTime: %lld", current.utime + current.stime);
         return 0.0f;
     }
 
     // Calculate deltas
     long long processTimeDelta = (current.utime + current.stime) -
                                  (gLastProcessCPU.utime + gLastProcessCPU.stime);
-    long long totalTimeDelta = totalCPU - gLastTotalCPU;
+    long long realTimeDelta = currentRealTime - gLastRealTime;
 
     float cpuUsage = 0.0f;
-    if (totalTimeDelta > 0) {
-        // CPU% = (process_time_delta / total_time_delta) * 100 * num_cores
-        long numCores = sysconf(_SC_NPROCESSORS_ONLN);
-        if (numCores <= 0) numCores = 1; // Fallback
-
-        cpuUsage = (100.0f * processTimeDelta / totalTimeDelta) * numCores;
+    if (realTimeDelta > 0) {
+        // CPU% = (process_time_delta / real_time_delta) * 100
+        cpuUsage = (100.0f * static_cast<float>(processTimeDelta)) / static_cast<float>(realTimeDelta);
     }
 
     // Clamp to [0, 100]
@@ -439,13 +418,13 @@ Java_com_soundarch_MainActivity_getCPUUsage(JNIEnv* env, jobject /*thiz*/) {
 
     // Update last values
     gLastProcessCPU = current;
-    gLastTotalCPU = totalCPU;
+    gLastRealTime = currentRealTime;
 
     // Debug log every 10 calls
     if (++gCPUCallCount % 10 == 0) {
         long numCores = sysconf(_SC_NPROCESSORS_ONLN);
-        LOGI("📊 CPU: %.1f%% | ProcessΔ: %lld | TotalΔ: %lld | Cores: %ld",
-             cpuUsage, processTimeDelta, totalTimeDelta, numCores);
+        LOGI("📊 CPU: %.1f%% | ProcessΔ: %lld | TimeΔ: %lld | Cores: %ld",
+             cpuUsage, processTimeDelta, realTimeDelta, numCores);
     }
 
     return cpuUsage;
@@ -455,8 +434,8 @@ Java_com_soundarch_MainActivity_getCPUUsage(JNIEnv* env, jobject /*thiz*/) {
 // 💾 MEMORY MONITORING
 // ==============================================================================
 
-JNIEXPORT jlong JNICALL
-Java_com_soundarch_MainActivity_getMemoryUsage(JNIEnv* env, jobject /*thiz*/) {
+[[nodiscard]] JNIEXPORT jlong JNICALL
+Java_com_soundarch_MainActivity_getMemoryUsage([[maybe_unused]] JNIEnv* env, jobject /*thiz*/) {
     FILE* file = fopen("/proc/self/status", "r");
     if (!file) {
         LOGW("⚠️ Cannot open /proc/self/status");
@@ -468,7 +447,16 @@ Java_com_soundarch_MainActivity_getMemoryUsage(JNIEnv* env, jobject /*thiz*/) {
 
     while (fgets(line, sizeof(line), file)) {
         if (strncmp(line, "VmRSS:", 6) == 0) {
-            sscanf(line + 6, "%ld", &vmRSS);
+            // Use strtol for safer string-to-integer conversion
+            char* endptr = nullptr;
+            errno = 0;
+            long value = strtol(line + 6, &endptr, 10);
+            if (errno == 0 && endptr != line + 6) {
+                vmRSS = value;
+            } else {
+                LOGW("⚠️ Failed to parse VmRSS");
+                vmRSS = 0;
+            }
             break;
         }
     }

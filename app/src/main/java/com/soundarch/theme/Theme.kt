@@ -1,4 +1,4 @@
-package com.soundarch.ui.theme
+package com.soundarch.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme

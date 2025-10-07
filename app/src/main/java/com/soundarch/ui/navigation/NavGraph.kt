@@ -42,7 +42,10 @@ fun NavGraph(
     compressorMakeupGain: Float,
     limiterEnabled: Boolean,
     limiterThreshold: Float,
-    limiterRelease: Float
+    limiterRelease: Float,
+    getAGCCurrentGain: () -> Float,
+    getAGCCurrentLevel: () -> Float,
+    getLimiterGainReduction: () -> Float
 ) {
     NavHost(
         navController = navController,
@@ -99,6 +102,7 @@ fun NavGraph(
                 initialRelease = limiterRelease,
                 onLimiterChange = onLimiterChange,
                 onLimiterToggle = onLimiterToggle,
+                getLimiterGainReduction = getLimiterGainReduction,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -115,6 +119,8 @@ fun NavGraph(
                 initialWindowSize = agcWindowSize,
                 onAGCChange = onAGCChange,
                 onAGCToggle = onAGCToggle,
+                getAGCCurrentGain = getAGCCurrentGain,
+                getAGCCurrentLevel = getAGCCurrentLevel,
                 onBack = { navController.popBackStack() }
             )
         }

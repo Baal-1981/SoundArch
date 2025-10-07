@@ -54,8 +54,8 @@ fun EqualizerSlider(
 
         // 📊 Label gain (droite)
         val gainText = when {
-            gain > 0 -> "+${gain.toInt()}"
-            else -> "${gain.toInt()}"
+            gain > 0 -> "+${String.format("%.1f", gain)}"
+            else -> String.format("%.1f", gain)
         }
 
         Text(

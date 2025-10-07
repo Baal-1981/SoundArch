@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,6 +25,8 @@ fun AGCScreen(
     initialWindowSize: Float = 0.1f,
     onAGCChange: (Float, Float, Float, Float, Float, Float, Float) -> Unit,
     onAGCToggle: (Boolean) -> Unit,
+    getAGCCurrentGain: () -> Float,
+    getAGCCurrentLevel: () -> Float,
     onBack: () -> Unit
 ) {
     // ✅ UTILISER les valeurs passées en paramètres
@@ -35,6 +38,23 @@ fun AGCScreen(
     var releaseTime by remember { mutableStateOf(initialReleaseTime) }
     var noiseThreshold by remember { mutableStateOf(initialNoiseThreshold) }
     var windowSize by remember { mutableStateOf(initialWindowSize) }
+
+    // Real-time monitoring
+    var currentGain by remember { mutableStateOf(0f) }
+    var currentLevel by remember { mutableStateOf(-60f) }
+
+    // Poll every 100ms for real-time display
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(100)
+            try {
+                currentGain = getAGCCurrentGain()
+                currentLevel = getAGCCurrentLevel()
+            } catch (_: Exception) {
+                // Ignore errors (e.g., when audio is not running)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -89,6 +109,54 @@ fun AGCScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "📊 Real-time Monitor",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Current Gain:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            "${String.format("%+.1f", currentGain)} dB",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Input Level:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            "${String.format("%.1f", currentLevel)} dBFS",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
 
@@ -227,7 +295,7 @@ fun AGCScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "Attack Time: ${String.format("%.1f", attackTime)} s",
+                        "Attack Time: ${String.format("%.2f", attackTime)} s",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -249,21 +317,21 @@ fun AGCScreen(
                                 windowSize
                             )
                         },
-                        valueRange = 0.5f..20f,
+                        valueRange = 0.01f..20f,
                         enabled = enabled
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("0.5 s", style = MaterialTheme.typography.labelSmall)
+                        Text("0.01 s", style = MaterialTheme.typography.labelSmall)
                         Text("20 s", style = MaterialTheme.typography.labelSmall)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        "Release Time: ${String.format("%.1f", releaseTime)} s",
+                        "Release Time: ${String.format("%.2f", releaseTime)} s",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
@@ -285,14 +353,14 @@ fun AGCScreen(
                                 windowSize
                             )
                         },
-                        valueRange = 1f..30f,
+                        valueRange = 0.1f..30f,
                         enabled = enabled
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("1 s", style = MaterialTheme.typography.labelSmall)
+                        Text("0.1 s", style = MaterialTheme.typography.labelSmall)
                         Text("30 s", style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -381,8 +449,8 @@ fun AGCScreen(
                     targetLevel = -20f
                     maxGain = 25f
                     minGain = -10f
-                    attackTime = 3f
-                    releaseTime = 15f
+                    attackTime = 0.1f  // Fast attack: 100ms
+                    releaseTime = 0.5f  // Fast release: 500ms
                     noiseThreshold = -55f
                     windowSize = 0.1f
                     onAGCChange(

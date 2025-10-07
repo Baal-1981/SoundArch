@@ -22,7 +22,7 @@ namespace soundarch::dsp {
         void reset() noexcept;
 
         // Getters pour UI (niveau de réduction)
-        float getGainReduction() const noexcept { return gainReduction_; }
+        [[nodiscard]] float getGainReduction() const noexcept { return gainReduction_; }
 
     private:
         float sampleRate_;
@@ -39,11 +39,6 @@ namespace soundarch::dsp {
         std::vector<float> lookaheadBuffer_;
         size_t lookaheadIndex_ = 0;
         bool useLookahead_ = false;
-
-        // Helpers
-        void updateReleaseCoeff() noexcept;
-        float dbToLinear(float db) const noexcept;
-        float linearToDb(float linear) const noexcept;
     };
 
 } // namespace soundarch::dsp

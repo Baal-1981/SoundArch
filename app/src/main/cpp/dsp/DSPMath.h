@@ -31,7 +31,7 @@ namespace soundarch::dsp {
          * Conversion dB vers linéaire optimisée
          * Équivalent à: pow(10, db/20)
          */
-        inline float dbToLinear(float db) const noexcept {
+        [[nodiscard]] inline float dbToLinear(float db) const noexcept {
             // Clamp au range de la table
             db = std::clamp(db, DB_MIN, DB_MAX);
 
@@ -49,7 +49,7 @@ namespace soundarch::dsp {
          * Conversion linéaire vers dB optimisée
          * Équivalent à: 20 * log10(linear)
          */
-        inline float linearToDb(float linear) const noexcept {
+        [[nodiscard]] inline float linearToDb(float linear) const noexcept {
             // Protection contre valeurs invalides
             if (linear <= 1e-10f) return DB_MIN;
 
@@ -73,7 +73,7 @@ namespace soundarch::dsp {
          * Version rapide sans interpolation (légèrement moins précis)
          * Utiliser seulement si la précision à 0.05 dB suffit
          */
-        inline float dbToLinearFast(float db) const noexcept {
+        [[nodiscard]] inline float dbToLinearFast(float db) const noexcept {
             db = std::clamp(db, DB_MIN, DB_MAX);
             int idx = static_cast<int>((db - DB_MIN) / DB_STEP + 0.5f);
             return dbToLinLUT_[std::min(idx, LUT_SIZE - 1)];

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,12 +19,28 @@ fun LimiterScreen(
     initialRelease: Float = 50.0f,
     onLimiterChange: (Float, Float) -> Unit,
     onLimiterToggle: (Boolean) -> Unit,
+    getLimiterGainReduction: () -> Float,
     onBack: () -> Unit
 ) {
     // ✅ UTILISER les valeurs passées en paramètres
     var enabled by remember { mutableStateOf(initialEnabled) }
     var threshold by remember { mutableStateOf(initialThreshold) }
     var release by remember { mutableStateOf(initialRelease) }
+
+    // Real-time monitoring
+    var gainReduction by remember { mutableStateOf(0f) }
+
+    // Poll every 100ms for real-time display
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(100)
+            try {
+                gainReduction = getLimiterGainReduction()
+            } catch (_: Exception) {
+                // Ignore errors (e.g., when audio is not running)
+            }
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -67,6 +84,46 @@ fun LimiterScreen(
                         text = "Empêche le signal de dépasser un seuil absolu. Protège vos oreilles des pics sonores.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "📊 Real-time Monitor",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Gain Reduction:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            "${String.format("%.1f", gainReduction)} dB",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (gainReduction > 0.1f) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        if (gainReduction > 0.1f) "⚠️ Limiting active" else "✅ No limiting",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -128,9 +185,7 @@ fun LimiterScreen(
                         value = threshold,
                         onValueChange = {
                             threshold = it
-                            if (enabled) {
-                                onLimiterChange(threshold, release)
-                            }
+                            onLimiterChange(threshold, release)
                         },
                         valueRange = -12f..0f,
                         enabled = enabled,
@@ -186,9 +241,7 @@ fun LimiterScreen(
                         value = release,
                         onValueChange = {
                             release = it
-                            if (enabled) {
-                                onLimiterChange(threshold, release)
-                            }
+                            onLimiterChange(threshold, release)
                         },
                         valueRange = 10f..200f,
                         enabled = enabled,
