@@ -13,21 +13,27 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompressorScreen(
+    initialThreshold: Float = -20f,
+    initialRatio: Float = 4f,
+    initialAttack: Float = 10f,
+    initialRelease: Float = 100f,
+    initialMakeupGain: Float = 0f,
     onCompressorChange: (Float, Float, Float, Float, Float) -> Unit,
     onBack: () -> Unit
 ) {
-    var threshold by remember { mutableStateOf(-20f) }
-    var ratio by remember { mutableStateOf(4f) }
-    var attack by remember { mutableStateOf(10f) }
-    var release by remember { mutableStateOf(100f) }
-    var makeupGain by remember { mutableStateOf(0f) }
+    // ✅ UTILISER les valeurs passées en paramètres
+    var threshold by remember { mutableStateOf(initialThreshold) }
+    var ratio by remember { mutableStateOf(initialRatio) }
+    var attack by remember { mutableStateOf(initialAttack) }
+    var release by remember { mutableStateOf(initialRelease) }
+    var makeupGain by remember { mutableStateOf(initialMakeupGain) }
 
     val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🎛️ Compressor") },
+                title = { Text("Compressor") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←", style = MaterialTheme.typography.headlineMedium)
@@ -39,15 +45,14 @@ fun CompressorScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)  // ✅ Respecte les insets système
-                .verticalScroll(scrollState)  // ✅ Scroll automatique
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),  // ✅ Espace pour navigation bar
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))  // ✅ Espace en haut
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // 📊 Header avec description
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -69,7 +74,6 @@ fun CompressorScreen(
                 }
             }
 
-            // 🎚️ Threshold
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -125,7 +129,6 @@ fun CompressorScreen(
                 }
             }
 
-            // 🎚️ Ratio
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -181,7 +184,6 @@ fun CompressorScreen(
                 }
             }
 
-            // 🎚️ Attack
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -237,7 +239,6 @@ fun CompressorScreen(
                 }
             }
 
-            // 🎚️ Release
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -293,7 +294,6 @@ fun CompressorScreen(
                 }
             }
 
-            // 🎚️ Makeup Gain
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -349,7 +349,6 @@ fun CompressorScreen(
                 }
             }
 
-            // ✅ Espace supplémentaire en bas
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

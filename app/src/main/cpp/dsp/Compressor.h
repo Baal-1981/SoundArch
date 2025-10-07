@@ -43,8 +43,7 @@ namespace soundarch::dsp {
         float gainReductionDb_;
         float makeupGainLin_;
 
-        // ✅ FIX: Compteur de warmup pour éviter glitch initial
-        int warmupCounter_;
+        // ✅ warmupCounter_ supprimé - pas besoin avec envelope_ à -60dB
     };
 
 } // namespace soundarch::dsp

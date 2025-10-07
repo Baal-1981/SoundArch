@@ -33,10 +33,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 🎧 Native JNI functions
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // AUDIO LIFECYCLE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     external fun startAudio()
     external fun stopAudio()
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // EQUALIZER
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     external fun setEqBands(gains: FloatArray)
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // COMPRESSOR
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     external fun setCompressor(
         threshold: Float,
         ratio: Float,
@@ -45,7 +58,10 @@ class MainActivity : ComponentActivity() {
         makeupGain: Float
     )
 
-    // 🔸 Limiter JNI (NOUVEAU)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // LIMITER
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     external fun setLimiter(
         threshold: Float,
         release: Float,
@@ -53,6 +69,33 @@ class MainActivity : ComponentActivity() {
     )
     external fun getLimiterGainReduction(): Float
     external fun setLimiterEnabled(enabled: Boolean)
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // AGC CONTROL
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    external fun setAGCTargetLevel(targetDb: Float)
+    external fun setAGCMaxGain(maxGainDb: Float)
+    external fun setAGCMinGain(minGainDb: Float)
+    external fun setAGCAttackTime(seconds: Float)
+    external fun setAGCReleaseTime(seconds: Float)
+    external fun setAGCNoiseThreshold(thresholdDb: Float)
+    external fun setAGCWindowSize(seconds: Float)
+    external fun setAGCEnabled(enabled: Boolean)
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // AGC MONITORING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    external fun getAGCCurrentGain(): Float
+    external fun getAGCCurrentLevel(): Float
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // PERFORMANCE MONITORING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    external fun getCPUUsage(): Float
+    external fun getMemoryUsage(): Long
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,135 +107,217 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 var latency by remember { mutableStateOf(0f) }
 
-                // 🎛️ 10 bandes ISO standard (Hz)
+                // Performance monitoring states
+                var cpuUsage by remember { mutableStateOf(0f) }
+                var memoryUsage by remember { mutableStateOf(0L) }
+
+                // 10 bandes ISO standard (Hz)
                 val bands = listOf(
-                    31,    // Sub-bass
-                    62,    // Bass
-                    125,   // Low-mid bass
-                    250,   // Low-mid
-                    500,   // Midrange
-                    1000,  // Upper-mid
-                    2000,  // Presence
-                    4000,  // Brilliance
-                    8000,  // Air
-                    16000  // Sparkle
+                    31, 62, 125, 250, 500,
+                    1000, 2000, 4000, 8000, 16000
                 )
 
-                // 🎚️ Gains par bande (initialisés à 0 dB)
+                // Gains par bande (initialisés à 0 dB)
                 var gains by remember { mutableStateOf(List(bands.size) { 0f }) }
 
-                // 🔸 État Limiter (NOUVEAU)
+                // État Compressor
+                var compressorThreshold by remember { mutableStateOf(-20f) }
+                var compressorRatio by remember { mutableStateOf(4f) }
+                var compressorAttack by remember { mutableStateOf(5f) }
+                var compressorRelease by remember { mutableStateOf(50f) }
+                var compressorMakeupGain by remember { mutableStateOf(0f) }
+
+                // État Limiter
                 var limiterEnabled by remember { mutableStateOf(true) }
                 var limiterThreshold by remember { mutableStateOf(-1.0f) }
                 var limiterRelease by remember { mutableStateOf(50.0f) }
 
-                // 🚀 Coroutine scope pour debounce optimisé
+                // État AGC
+                var agcEnabled by remember { mutableStateOf(true) }
+                var agcTargetLevel by remember { mutableStateOf(-20f) }
+                var agcMaxGain by remember { mutableStateOf(25f) }
+                var agcMinGain by remember { mutableStateOf(-10f) }
+                var agcAttackTime by remember { mutableStateOf(3f) }
+                var agcReleaseTime by remember { mutableStateOf(15f) }
+                var agcNoiseThreshold by remember { mutableStateOf(-55f) }
+                var agcWindowSize by remember { mutableStateOf(0.1f) }
+
+                // Coroutine scope pour debounce optimisé
                 val scope = rememberCoroutineScope()
                 var debounceJob by remember { mutableStateOf<Job?>(null) }
 
                 SideEffect {
                     updateLatencyCallback = { latency = it }
                 }
+                // Update monitoring périodique
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        delay(500) // Update toutes les 500ms
+                        try {
+                            cpuUsage = getCPUUsage()
+                            memoryUsage = getMemoryUsage()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error reading system stats: ${e.message}")
+                        }
+                    }
+                }
 
                 NavGraph(
                     navController = navController,
                     latency = latency,
+                    cpuUsage = cpuUsage,
+                    memoryUsageMB = memoryUsage / 1024f,
                     bands = bands,
                     gains = gains,
 
-                    // 🎛️ Callback EQ slider
                     onBandChange = { index, value ->
-                        Log.d(TAG, "🎚️ Band $index → ${String.format("%.1f", value)}dB")
-
+                        Log.d(TAG, "Band $index -> ${String.format("%.1f", value)}dB")
                         gains = gains.toMutableList().also { it[index] = value }
-
                         debounceJob?.cancel()
                         debounceJob = scope.launch {
-                            delay(50)
-                            Log.i(TAG, "📤 EQ update: Band$index=${String.format("%.1f", value)}dB")
+                            delay(10)
+                            Log.i(TAG, "EQ update: Band$index=${String.format("%.1f", value)}dB")
                             setEqBands(gains.toFloatArray())
                         }
                     },
 
-                    // 🔄 Reset EQ
                     onReset = {
-                        Log.i(TAG, "🔄 Reset all bands to 0dB")
+                        Log.i(TAG, "Reset all bands to 0dB")
                         gains = List(bands.size) { 0f }
                         debounceJob?.cancel()
                         setEqBands(FloatArray(bands.size) { 0f })
                     },
 
-                    // 🎚️ Callback Compressor
                     onCompressorChange = { threshold, ratio, attack, release, makeupGain ->
-                        Log.i(TAG, "🎚️ Compressor: Thr=${String.format("%.1f", threshold)}dB Ratio=${String.format("%.1f", ratio)}:1")
-
+                        Log.i(TAG, "Compressor: Thr=${String.format("%.1f", threshold)}dB Ratio=${String.format("%.1f", ratio)}:1")
+                        compressorThreshold = threshold
+                        compressorRatio = ratio
+                        compressorAttack = attack
+                        compressorRelease = release
+                        compressorMakeupGain = makeupGain
                         debounceJob?.cancel()
                         debounceJob = scope.launch {
-                            delay(50)
+                            delay(10)
                             setCompressor(threshold, ratio, attack, release, makeupGain)
                         }
                     },
 
-                    // 🔸 Callback Limiter (NOUVEAU)
                     onLimiterChange = { threshold, release ->
-                        Log.i(TAG, "🚨 Limiter: Thr=${String.format("%.1f", threshold)}dB Release=${String.format("%.1f", release)}ms")
-
+                        Log.i(TAG, "Limiter: Thr=${String.format("%.1f", threshold)}dB Release=${String.format("%.1f", release)}ms")
                         limiterThreshold = threshold
                         limiterRelease = release
-
                         debounceJob?.cancel()
                         debounceJob = scope.launch {
-                            delay(50)
-                            setLimiter(threshold, release, 0.0f) // Pas de lookahead
+                            delay(10)
+                            setLimiter(threshold, release, 0.0f)
                         }
                     },
 
-                    // 🔸 Toggle Limiter ON/OFF (NOUVEAU)
                     onLimiterToggle = { enabled ->
-                        Log.i(TAG, if (enabled) "✅ Limiter ENABLED" else "❌ Limiter DISABLED")
+                        Log.i(TAG, if (enabled) "Limiter ENABLED" else "Limiter DISABLED")
                         limiterEnabled = enabled
                         setLimiterEnabled(enabled)
                     },
 
-                    // ▶️ Start audio
+                    onAGCChange = { targetLevel, maxGain, minGain, attackTime, releaseTime, noiseThreshold, windowSize ->
+                        Log.i(TAG, "AGC: Target=${String.format("%.1f", targetLevel)}dB MaxGain=${String.format("%.1f", maxGain)}dB")
+                        agcTargetLevel = targetLevel
+                        agcMaxGain = maxGain
+                        agcMinGain = minGain
+                        agcAttackTime = attackTime
+                        agcReleaseTime = releaseTime
+                        agcNoiseThreshold = noiseThreshold
+                        agcWindowSize = windowSize
+                        debounceJob?.cancel()
+                        debounceJob = scope.launch {
+                            delay(10)
+                            setAGCTargetLevel(targetLevel)
+                            setAGCMaxGain(maxGain)
+                            setAGCMinGain(minGain)
+                            setAGCAttackTime(attackTime)
+                            setAGCReleaseTime(releaseTime)
+                            setAGCNoiseThreshold(noiseThreshold)
+                            setAGCWindowSize(windowSize)
+                        }
+                    },
+
+                    onAGCToggle = { enabled ->
+                        Log.i(TAG, if (enabled) "AGC ENABLED" else "AGC DISABLED")
+                        agcEnabled = enabled
+                        setAGCEnabled(enabled)
+                    },
+
                     onStart = {
                         if (hasMicrophonePermission()) {
-                            Log.i(TAG, "▶️ Starting audio engine...")
+                            Log.i(TAG, "Starting audio engine...")
                             startAudio()
 
-                            // Sync initial EQ state
                             setEqBands(gains.toFloatArray())
+                            setCompressor(
+                                compressorThreshold,
+                                compressorRatio,
+                                compressorAttack,
+                                compressorRelease,
+                                compressorMakeupGain
+                            )
 
-                            // 🔸 Sync initial Limiter state (NOUVEAU)
                             if (limiterEnabled) {
                                 setLimiter(limiterThreshold, limiterRelease, 0.0f)
+                                setLimiterEnabled(true)
+                            }
+
+                            if (agcEnabled) {
+                                setAGCTargetLevel(agcTargetLevel)
+                                setAGCMaxGain(agcMaxGain)
+                                setAGCMinGain(agcMinGain)
+                                setAGCAttackTime(agcAttackTime)
+                                setAGCReleaseTime(agcReleaseTime)
+                                setAGCNoiseThreshold(agcNoiseThreshold)
+                                setAGCWindowSize(agcWindowSize)
+                                setAGCEnabled(true)
                             }
 
                             Toast.makeText(
                                 this@MainActivity,
-                                "🎙️ Audio started - EQ + Compressor + Limiter active",
+                                "Audio started - Full DSP chain active",
                                 Toast.LENGTH_SHORT
                             ).show()
                         } else {
                             Toast.makeText(
                                 this@MainActivity,
-                                "⚠️ Microphone permission required",
+                                "Microphone permission required",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
                     },
 
-                    // ⏹️ Stop audio
                     onStop = {
-                        Log.i(TAG, "⏹️ Stopping audio engine...")
+                        Log.i(TAG, "Stopping audio engine...")
                         debounceJob?.cancel()
                         stopAudio()
                         Toast.makeText(
                             this@MainActivity,
-                            "🛑 Audio stopped",
+                            "Audio stopped",
                             Toast.LENGTH_SHORT
                         ).show()
-                    }
+                    },
+
+                    agcEnabled = agcEnabled,
+                    agcTargetLevel = agcTargetLevel,
+                    agcMaxGain = agcMaxGain,
+                    agcMinGain = agcMinGain,
+                    agcAttackTime = agcAttackTime,
+                    agcReleaseTime = agcReleaseTime,
+                    agcNoiseThreshold = agcNoiseThreshold,
+                    agcWindowSize = agcWindowSize,
+                    compressorThreshold = compressorThreshold,
+                    compressorRatio = compressorRatio,
+                    compressorAttack = compressorAttack,
+                    compressorRelease = compressorRelease,
+                    compressorMakeupGain = compressorMakeupGain,
+                    limiterEnabled = limiterEnabled,
+                    limiterThreshold = limiterThreshold,
+                    limiterRelease = limiterRelease
                 )
             }
         }
@@ -211,9 +336,9 @@ class MainActivity : ComponentActivity() {
                 ActivityResultContracts.RequestPermission()
             ) { granted ->
                 val msg = if (granted)
-                    "✅ Microphone permission granted"
+                    "Microphone permission granted"
                 else
-                    "❌ Microphone permission denied"
+                    "Microphone permission denied"
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
             }
             launcher.launch(Manifest.permission.RECORD_AUDIO)

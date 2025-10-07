@@ -28,7 +28,9 @@ set(NATIVE_SRC
         ${CMAKE_SOURCE_DIR}/dsp/Equalizer.cpp
         ${CMAKE_SOURCE_DIR}/dsp/Compressor.cpp
         ${CMAKE_SOURCE_DIR}/dsp/Limiter.cpp
+        ${CMAKE_SOURCE_DIR}/dsp/AGC.cpp
         ${CMAKE_SOURCE_DIR}/utils/RingBuffer.cpp
+        # ✅ DSPMath.h est header-only, pas besoin de .cpp
 )
 
 # ✅ Création de la bibliothèque partagée

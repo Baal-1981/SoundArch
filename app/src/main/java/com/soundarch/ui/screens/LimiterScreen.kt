@@ -13,20 +13,24 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LimiterScreen(
+    initialEnabled: Boolean = true,
+    initialThreshold: Float = -1.0f,
+    initialRelease: Float = 50.0f,
     onLimiterChange: (Float, Float) -> Unit,
     onLimiterToggle: (Boolean) -> Unit,
     onBack: () -> Unit
 ) {
-    var enabled by remember { mutableStateOf(true) }
-    var threshold by remember { mutableStateOf(-1.0f) }
-    var release by remember { mutableStateOf(50.0f) }
+    // ✅ UTILISER les valeurs passées en paramètres
+    var enabled by remember { mutableStateOf(initialEnabled) }
+    var threshold by remember { mutableStateOf(initialThreshold) }
+    var release by remember { mutableStateOf(initialRelease) }
 
     val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🚨 Limiter") },
+                title = { Text("Limiter") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←", style = MaterialTheme.typography.headlineMedium)
@@ -38,15 +42,14 @@ fun LimiterScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)  // ✅ Respecte les insets du Scaffold
-                .verticalScroll(scrollState)  // ✅ Scroll si contenu trop grand
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),  // ✅ Padding extra en bas
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))  // ✅ Espace en haut
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // 🔸 Header avec description
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -68,7 +71,6 @@ fun LimiterScreen(
                 }
             }
 
-            // 🔸 Toggle Enable/Disable
             Card(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
@@ -101,7 +103,6 @@ fun LimiterScreen(
                 }
             }
 
-            // 🔸 Threshold Slider
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -160,7 +161,6 @@ fun LimiterScreen(
                 }
             }
 
-            // 🔸 Release Slider
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -219,7 +219,6 @@ fun LimiterScreen(
                 }
             }
 
-            // 🔸 Info sécurité
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -250,7 +249,6 @@ fun LimiterScreen(
                 }
             }
 
-            // ✅ Espace supplémentaire en bas pour éviter que la barre de navigation cache le contenu
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

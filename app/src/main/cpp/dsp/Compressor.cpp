@@ -1,16 +1,9 @@
 #include "Compressor.h"
+#include "DSPMath.h"
 
 namespace soundarch::dsp {
 
     namespace {
-        inline float dbToLinear(float db) {
-            return std::pow(10.0f, db / 20.0f);
-        }
-
-        inline float linearToDb(float linear) {
-            return 20.0f * std::log10(std::max(linear, 1e-6f));
-        }
-
         inline float calcCoef(float timeMs, float sampleRate) {
             return std::exp(-1.0f / (timeMs * 0.001f * sampleRate));
         }
@@ -30,33 +23,31 @@ namespace soundarch::dsp {
             , ratio_(ratio)
             , kneeDb_(kneeDb)
             , makeupGainDb_(makeupGainDb)
-            , envelope_(-60.0f)  // ✅ FIX: Démarre à -60dB au lieu de 0
+            , envelope_(-60.0f)
             , gainReductionDb_(0.0f)
-            , warmupCounter_(200)  // ✅ FIX: 200 samples de warmup (~4ms @ 48kHz)
     {
         attackCoef_ = calcCoef(attackMs, sampleRate_);
         releaseCoef_ = calcCoef(releaseMs, sampleRate_);
-        makeupGainLin_ = dbToLinear(makeupGainDb_);
+
+        // ✅ OPTIMISATION LUT: Pré-calculer le makeup gain linéaire
+        makeupGainLin_ = getDSPMath().dbToLinear(makeupGainDb_);
     }
 
     float Compressor::process(float input) noexcept {
-        // ✅ FIX: Bypass pendant warmup pour éviter glitch initial
-        if (warmupCounter_ > 0) {
-            warmupCounter_--;
-            // Rampe progressive du gain
-            float ramp = 1.0f - (warmupCounter_ / 200.0f);
-            return input * ramp;
-        }
+        auto& dspMath = getDSPMath();
 
         const float inputAbs = std::fabs(input);
-        const float inputDb = linearToDb(inputAbs);
+
+        // ✅ OPTIMISATION LUT: log10 remplacé par lookup table
+        const float inputDb = dspMath.linearToDb(inputAbs);
 
         const float coef = (inputDb > envelope_) ? attackCoef_ : releaseCoef_;
         envelope_ = coef * envelope_ + (1.0f - coef) * inputDb;
 
         gainReductionDb_ = computeGain(envelope_);
 
-        const float gainLin = dbToLinear(gainReductionDb_);
+        // ✅ OPTIMISATION LUT: pow remplacé par lookup table
+        const float gainLin = dspMath.dbToLinear(gainReductionDb_);
         const float output = input * gainLin * makeupGainLin_;
 
         return output;
@@ -82,9 +73,8 @@ namespace soundarch::dsp {
     }
 
     void Compressor::reset() noexcept {
-        envelope_ = -60.0f;  // ✅ FIX: Reset à -60dB
+        envelope_ = -60.0f;
         gainReductionDb_ = 0.0f;
-        warmupCounter_ = 200;  // ✅ Reset warmup
     }
 
     void Compressor::setThreshold(float thresholdDb) noexcept {
@@ -107,7 +97,9 @@ namespace soundarch::dsp {
 
     void Compressor::setMakeupGain(float gainDb) noexcept {
         makeupGainDb_ = std::clamp(gainDb, 0.0f, 24.0f);
-        makeupGainLin_ = dbToLinear(makeupGainDb_);
+
+        // ✅ OPTIMISATION LUT: Recalculer le makeup gain linéaire
+        makeupGainLin_ = getDSPMath().dbToLinear(makeupGainDb_);
     }
 
 } // namespace soundarch::dsp
