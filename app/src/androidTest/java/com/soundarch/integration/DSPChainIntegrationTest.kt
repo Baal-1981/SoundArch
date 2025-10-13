@@ -162,14 +162,14 @@ class DSPChainIntegrationTest {
 
         // Enable AGC
         mainActivity.setAGCEnabled(true)
-        Thread.sleep(200)
+        Thread.sleep(50)  // Reduced from 200ms - JNI enable is fast
 
         val gainEnabled = mainActivity.getAGCCurrentGain()
         android.util.Log.i(TAG, "AGC Enabled: Gain=${String.format("%.2f", gainEnabled)}dB")
 
         // Disable AGC
         mainActivity.setAGCEnabled(false)
-        Thread.sleep(200)
+        Thread.sleep(50)  // Reduced from 200ms - JNI disable is fast
 
         // AGC should still respond to queries even when disabled
         val gainDisabled = mainActivity.getAGCCurrentGain()
@@ -178,7 +178,7 @@ class DSPChainIntegrationTest {
 
         // Re-enable AGC
         mainActivity.setAGCEnabled(true)
-        Thread.sleep(200)
+        Thread.sleep(50)  // Reduced from 200ms - JNI enable is fast
 
         val gainReEnabled = mainActivity.getAGCCurrentGain()
         assertThat(gainReEnabled).isNotNaN()
@@ -205,25 +205,25 @@ class DSPChainIntegrationTest {
         // Test 1: All bands +6dB
         val gains1 = FloatArray(10) { 6.0f }
         mainActivity.setEqBands(gains1)
-        Thread.sleep(100)
+        // No sleep needed - JNI call is synchronous
         android.util.Log.i(TAG, "✅ EQ Test 1: All bands +6dB applied")
 
         // Test 2: All bands 0dB (flat)
         val gains2 = FloatArray(10) { 0.0f }
         mainActivity.setEqBands(gains2)
-        Thread.sleep(100)
+        // No sleep needed - JNI call is synchronous
         android.util.Log.i(TAG, "✅ EQ Test 2: All bands 0dB (flat) applied")
 
         // Test 3: Alternating pattern
         val gains3 = FloatArray(10) { index -> if (index % 2 == 0) 3.0f else -3.0f }
         mainActivity.setEqBands(gains3)
-        Thread.sleep(100)
+        // No sleep needed - JNI call is synchronous
         android.util.Log.i(TAG, "✅ EQ Test 3: Alternating +3dB/-3dB pattern applied")
 
         // Test 4: V-curve (bass/treble boost, mids cut)
         val gains4 = floatArrayOf(6.0f, 4.0f, 2.0f, 0.0f, -2.0f, -2.0f, 0.0f, 2.0f, 4.0f, 6.0f)
         mainActivity.setEqBands(gains4)
-        Thread.sleep(100)
+        // No sleep needed - JNI call is synchronous
         android.util.Log.i(TAG, "✅ EQ Test 4: V-curve (bass/treble boost) applied")
     }
 
@@ -286,11 +286,11 @@ class DSPChainIntegrationTest {
 
         // Disable initially
         mainActivity.setNoiseCancellerEnabled(false)
-        Thread.sleep(200)
+        Thread.sleep(50)  // Reduced from 200ms - JNI disable is fast
 
         // Enable Noise Canceller
         mainActivity.setNoiseCancellerEnabled(true)
-        Thread.sleep(500) // Allow time for noise floor estimation
+        Thread.sleep(200)  // Reduced from 500ms - noise floor estimates faster than expected
 
         val floor = mainActivity.getNoiseCancellerNoiseFloor()
         assertThat(floor).isAtMost(0.0f)
@@ -330,7 +330,7 @@ class DSPChainIntegrationTest {
         android.util.Log.i(TAG, "Compressor configured: Thr=-20dB Ratio=4:1 Att=5ms Rel=50ms")
 
         // Wait for compressor to process audio
-        Thread.sleep(500)
+        Thread.sleep(200)  // Reduced from 500ms - compressor adapts quickly with 5ms attack
 
         // Read gain reduction
         val gr = mainActivity.getCompressorGainReduction()
@@ -341,7 +341,7 @@ class DSPChainIntegrationTest {
 
         // Disable compressor
         mainActivity.setCompressorEnabled(false)
-        Thread.sleep(200)
+        Thread.sleep(50)  // Reduced from 200ms - JNI disable is fast
 
         val grDisabled = mainActivity.getCompressorGainReduction()
         android.util.Log.i(TAG, "Compressor disabled: GR=${String.format("%.2f", grDisabled)}dB")
@@ -374,7 +374,7 @@ class DSPChainIntegrationTest {
         android.util.Log.i(TAG, "Limiter configured: Thr=-1dBFS Rel=50ms")
 
         // Wait for limiter to process audio
-        Thread.sleep(500)
+        Thread.sleep(200)  // Reduced from 500ms - limiter responds quickly
 
         // Read gain reduction
         val gr = mainActivity.getLimiterGainReduction()
@@ -409,7 +409,7 @@ class DSPChainIntegrationTest {
         android.util.Log.i(TAG, "TEST: Audio levels can be read")
 
         // Wait for audio to process
-        Thread.sleep(500)
+        Thread.sleep(200)  // Reduced from 500ms - audio levels update quickly
 
         // Read multiple samples
         val samples = 5
@@ -435,7 +435,7 @@ class DSPChainIntegrationTest {
 
             android.util.Log.i(TAG, "Sample $it: Peak=${String.format("%.1f", peak)}dB RMS=${String.format("%.1f", rms)}dB")
 
-            Thread.sleep(100)
+            Thread.sleep(50)  // Reduced from 100ms - faster sampling
         }
 
         // Calculate average
@@ -485,7 +485,7 @@ class DSPChainIntegrationTest {
 
         // Process audio for 2 seconds
         repeat(20) { i ->
-            Thread.sleep(100)
+            Thread.sleep(50)  // Reduced from 100ms - faster monitoring
 
             val peak = mainActivity.getPeakDb()
             val rms = mainActivity.getRmsDb()
