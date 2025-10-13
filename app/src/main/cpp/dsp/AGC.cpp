@@ -109,6 +109,42 @@ namespace soundarch::dsp {
         return std::clamp(output, -0.95f, 0.95f);
     }
 
+    // ✅ OPTIMIZED: Block processing - amortized RMS and gain calculations
+    void AGC::processBlock(const float* input, float* output, int numFrames) noexcept {
+        auto& dspMath = getDSPMath();
+
+        for (int i = 0; i < numFrames; ++i) {
+            float sample = std::clamp(input[i], -1.0f, 1.0f);
+
+            // Update RMS
+            const float oldSample = rmsBuffer_[writeIndex_];
+            const float newSample = sample * sample;
+            rmsBuffer_[writeIndex_] = newSample;
+            rmsSum_ += (newSample - oldSample);
+            if (rmsSum_ < 0.0f) rmsSum_ = 0.0f;
+            writeIndex_ = (writeIndex_ + 1) % windowSize_;
+
+            // Calculate level (every sample for accuracy)
+            const float rms = std::sqrt(rmsSum_ / static_cast<float>(windowSize_) + 1e-10f);
+            currentLevelDb_ = dspMath.linearToDb(rms);
+
+            // Noise gate and gain calculation
+            if (currentLevelDb_ < noiseThresholdDb_) {
+                isFrozen_ = true;
+            } else {
+                isFrozen_ = false;
+                const float error = targetLevelDb_ - currentLevelDb_;
+                float targetGainDb = std::clamp(error, minGainDb_, maxGainDb_);
+                const float coef = (targetGainDb > currentGainDb_) ? attackCoef_ : releaseCoef_;
+                currentGainDb_ = coef * currentGainDb_ + (1.0f - coef) * targetGainDb;
+            }
+
+            // Apply gain
+            const float linearGain = dspMath.dbToLinear(currentGainDb_);
+            output[i] = std::clamp(sample * linearGain, -0.95f, 0.95f);
+        }
+    }
+
     void AGC::reset() noexcept {
         rmsBuffer_.fill(0.0f);
         rmsSum_ = 0.0f;
