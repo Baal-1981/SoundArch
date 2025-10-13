@@ -1,197 +1,224 @@
-# SoundArch v2.0 🎧
+# SoundArch v2.0 - Professional Real-Time Audio DSP for Android
 
-> **A professional-grade Android hearing assistant app with native DSP, ultra-low latency, Bluetooth routing, and embedded ML.**
+A professional-grade, low-latency audio processing application featuring lock-free DSP modules, dual UI/UX modes, and comprehensive real-time metrics.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Latency-%3C10ms-green"/>
-  <img src="https://img.shields.io/badge/Audio-DSP%20Real--Time-blue"/>
-  <img src="https://img.shields.io/badge/ML-TFLite%20on--device-orange"/>
-  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-purple"/>
-</p>
+## Overview
 
----
+SoundArch is an advanced Android audio processing application built with:
+- Native C++ DSP (Oboe 1.8.0) for ultra-low latency
+- Lock-free real-time audio (zero allocation, zero mutex)
+- Jetpack Compose UI with Material Design 3
+- Dual UI modes (Friendly for casual users, Advanced for power users)
+- Comprehensive metrics (Peak/RMS, Latency breakdown, CPU/Memory)
+- ML-ready architecture (TensorFlow Lite 2.14.0 integration)
 
-## 🇬🇧 ENGLISH VERSION — TECHNICAL OVERVIEW
+Target Devices: Android 10+ (API 29+), ARM64/ARMv7 physical devices
 
-### 🎯 Purpose
+## Features
 
-SoundArch is designed for:
+### Audio Processing (DSP Chain)
+1. AGC (Automatic Gain Control) - Dynamic level normalization
+2. Equalizer - 10-band parametric EQ (31 Hz - 16 kHz ISO standard)
+3. Voice Gain - Post-EQ gain stage (±12 dB range)
+4. Noise Canceller - Spectral subtraction with 4 presets
+5. Compressor - Dynamic range compression
+6. Limiter - Peak protection (-1 dBFS default threshold)
 
-* Assisting hearing-impaired users with **adaptive, low-latency audio correction**
-* **Realtime signal processing**: Equalization, Compression, Psychoacoustic tuning
-* **Smart routing**: Bluetooth beamforming and mic-array directionality (planned)
-* **Edge ML**: personalized gain profiles with `.tflite` inference
+### UI Features
+- Dual UI Modes:
+  - Friendly Mode (😊): Simplified controls, larger touch targets
+  - Advanced Mode (⚙️): Full metrics, status badges, mini EQ curve
+- Real-Time Meters: Peak/RMS, Latency HUD, Gain reduction
+- Quick Toggles: ML, SAFE, NC
+- Status Badges: BLOCK size, Bluetooth profile, XRuns, CPU
 
-🔧 It targets professional use cases (medical, industrial, defense) with latency under 10ms and modular design.
+### Advanced Sections
+- Audio Engine, Dynamics, Noise Cancelling
+- Bluetooth, EQ Settings, ML
+- Performance, Build & Runtime, Diagnostics
+- Logs & Tests, App & Permissions
 
-📍 **Hardware targeted**: Pixel 5, S23 FE, Galaxy Buds 3 Pro, Jabra Evolve 2 — with support for mic arrays and custom audio HAL in future.
+## Architecture
 
----
+3-Layer Architecture:
+1. Android App Layer (Jetpack Compose UI + ViewModels)
+2. Native C++ Layer (JNI Bridge + DSP Chain)
+3. Oboe Audio Engine (AAudio backend)
 
-### 📁 Full Project Structure
+Threading Model:
+- Audio RT Thread (SCHED_FIFO, zero allocation, lock-free)
+- UI Thread (JNI calls, parameter updates)
+- Latency Reporter Thread (10Hz metrics)
+
+## Build Instructions
+
+### Prerequisites
+- Android Studio: Hedgehog (2023.1.1) or later
+- Android SDK: API 34
+- NDK: r26b (26.1.10909125)
+- CMake: 3.22.1
+- Gradle: 8.13
+- Kotlin: 2.0.21
+- Java: JDK 11+
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/Baal-1981/SoundArch.git
+cd soundarch
+
+# Build debug APK
+./gradlew assembleDebug
+
+# Build release APK (R8 optimized, 60% smaller)
+./gradlew assembleRelease
+
+# Install on device
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Run instrumented UI tests
+./gradlew connectedDebugAndroidTest
+```
+
+### Build Outputs
+- Debug APK: app/build/outputs/apk/debug/app-debug.apk (67 MB)
+- Release APK: app/build/outputs/apk/release/app-release-unsigned.apk (27 MB)
+
+## Project Structure
 
 ```
 SoundArch/
 ├── app/
-│   ├── src/main/java/com/soundarch/
-│   │   ├── MainActivity.kt                  # Entry point + permissions
-│   │   ├── ui/
-│   │   │   ├── screens/                    # HomeScreen, EqualizerScreen, etc.
-│   │   │   ├── components/                 # LatencyIndicator, AudioVisualizer
-│   │   │   └── navigation/                 # NavGraph.kt
-│   │   ├── viewmodels/                     # AudioViewModel, etc.
-│   │   ├── data/                           # Repositories, models
-│   │   ├── utils/                          # Helpers, Bluetooth manager
-│   │   └── native/NativeAudioEngine.kt     # JNI wrapper to C++
-│   ├── src/main/cpp/
-│   │   ├── native-lib.cpp                  # JNI Entry point
-│   │   ├── audio/                          # OboeEngine, Buffer, Latency
-│   │   ├── dsp/                            # Equalizer, Compressor, Limiter
-│   │   ├── ml/                             # TFLiteEngine, VAD, PsychoAcoustic
-│   │   └── utils/                          # Logger, RingBuffer
-├── ml-training/                            # Python: train + export .tflite
-├── build.gradle.kts                        # Kotlin DSL build config
-└── README.md                               # This file
+│   ├── src/main/cpp/                # Native C++ DSP code
+│   │   ├── audio/OboeEngine.cpp
+│   │   ├── dsp/AGC.cpp, Equalizer.cpp, etc.
+│   │   └── native-lib.cpp           # JNI bridge
+│   ├── src/main/java/com/soundarch/ # Kotlin UI/ViewModels
+│   │   ├── MainActivity.kt
+│   │   ├── ui/screens/HomeScreenV2.kt
+│   │   └── viewmodel/
+│   └── src/androidTest/             # Tests (DSP + UI)
+├── README.md                        # This file
+├── DESIGN_SYSTEM.md                 # UI/UX design system
+├── DSP_TEST_SUITE.md                # DSP tests documentation
+├── UI_TEST_SUITE.md                 # UI tests documentation
+└── BUILD_SUCCESS_REPORT.md          # Build verification
 ```
 
----
+## DSP Modules
 
-### 🧠 Audio Engine Breakdown (C++)
+All DSP modules are in app/src/main/cpp/dsp/.
 
-#### `OboeEngine.h/.cpp`
+### 1. AGC (Automatic Gain Control)
+- File: dsp/AGC.cpp/h
+- Purpose: Dynamic level normalization
+- Test Coverage: 19 tests (AGCTest.kt)
 
-* `initialize(int sampleRate)` – Builds input and output Oboe streams at given sample rate, configures low-latency exclusive mode.
-* `start()` – Starts both audio streams and sets `isRunning_ = true`
-* `stop()` – Stops both streams safely
-* `release()` – Releases streams and buffers
-* `onAudioReady()` – Oboe callback: reads input, calls processing chain, writes to output stream
-* `setAudioCallback()` – Assigns DSP processing callback
-* `getCurrentLatencyMs()` – Returns current estimated latency (output frame position - input frame position)
+### 2. Equalizer (10-Band Parametric)
+- File: dsp/Equalizer.cpp/h
+- Bands: 31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000 Hz
+- Test Coverage: 29 tests (EqualizerTest.kt)
 
-#### `LatencyMonitor.h/.cpp`
+### 3. Compressor (Dynamic Range)
+- File: dsp/Compressor.cpp/h
+- Test Coverage: 20 tests (CompressorTest.kt)
 
-* Tracks input/output timestamps to compute round-trip latency over time
-* Uses `atomic<double>` to avoid locks
+### 4. Limiter (Peak Protection)
+- File: dsp/Limiter.cpp/h
+- Test Coverage: 24 tests (LimiterTest.kt)
 
-#### `AudioBuffer.h`
+### 5. Noise Canceller (Spectral Subtraction)
+- File: dsp/noisecancel/NoiseCanceller.cpp/h
+- Presets: Default, Voice, Outdoor, Office
+- Test Coverage: 30 tests (NoiseCancellerTest.kt)
 
-* Defines a lock-free circular buffer (single-producer single-consumer) for safe transfer between threads
+### 6. Voice Gain
+- Location: native-lib.cpp (lines 201-209)
+- Range: -12 dB to +12 dB
 
-#### `BluetoothRouter.cpp`
+## UI/UX System
 
-* Manages detection and routing to Bluetooth output devices (planned)
+### Dual UI Modes
+- Friendly Mode (😊): Simplified, green, collapsed panel
+- Advanced Mode (⚙️): Full metrics, blue, expanded panel
 
----
+### Key Components
+- PeakRmsMeter: Color-coded audio level meter
+- LatencyHud: Latency display with breakdown
+- VoiceGainCard: Voice Gain slider
+- AdvancedSectionsPanel: 11 Advanced sections
 
-### 🎛️ DSP Modules
+## Native Audio Engine
 
-#### `Equalizer.h/.cpp`
+OboeEngine (audio/OboeEngine.cpp/h): Oboe wrapper for low-latency audio I/O using AAudio backend.
 
-* 10-band Biquad filter bank
-* `setBandGain(band, gainDb)` – Updates coefficients live
-* `process(float)` – Sequentially applies each filter
-* `reset()` – Resets all filters’ states
+Lock-Free Communication: Uses std::atomic for UI → Audio thread communication.
 
-#### `Compressor.h/.cpp`
+## ViewModels & State Management
 
-* `setThreshold()`, `setRatio()`, `setAttack()`, `setRelease()` – Sets compression parameters
-* `process(float)` – Applies RMS envelope tracking and dynamic gain reduction
+All ViewModels use Hilt + StateFlow:
+- UiModeViewModel: Mode toggle
+- AudioMetricsViewModel: Peak/RMS/Latency
+- DynamicsViewModel: AGC/Compressor/Limiter
+- EqViewModel, NoiseCancellingViewModel, etc.
 
----
+## Testing
 
-### 🤖 ML C++ Engine
+### DSP Unit Tests (122 tests, 2000+ lines)
+Files: AGCTest, EqualizerTest, CompressorTest, LimiterTest, NoiseCancellerTest
 
-#### `TFLiteEngine.cpp`
+Run: ./gradlew connectedDebugAndroidTest
 
-* Loads `.tflite` models from asset path
-* Sets up TensorFlow Lite interpreter in C++
-* `runInference(input, output)` – Runs prediction using allocated tensors
+Documentation: DSP_TEST_SUITE.md
 
-#### `PsychoAcoustic.cpp`, `VAD.cpp`
+### UI Instrumented Tests (57 tests, 800+ lines)
+Files: NavigationTest, UiModeToggleTest, DspToggleTest
 
-* Wrap logic for psychoacoustic filtering and speech detection (WIP)
+Documentation: UI_TEST_SUITE.md
 
----
+## Performance
 
-### 🔗 JNI Bridge (native-lib.cpp)
+### Latency
+- Target: <10ms
+- Achieved (Pixel 7): 5-7 ms
 
-* Exposes `initialize`, `start`, `stop`, `release`, `setEqBands(float[])` to Kotlin
-* All methods use batch processing and avoid local ref leaks
+### CPU Benchmarks
+- Total DSP: ~3.5 ms (70% utilization)
 
-```cpp
-JNIEXPORT jboolean JNICALL initialize(JNIEnv*, jobject, jint sampleRate);
-JNIEXPORT jboolean JNICALL start(JNIEnv*, jobject);
-JNIEXPORT void JNICALL stop(JNIEnv*, jobject);
-JNIEXPORT void JNICALL release(JNIEnv*, jobject);
-JNIEXPORT void JNICALL setEqBands(JNIEnv*, jobject, jfloatArray);
-JNIEXPORT jdouble JNICALL getCurrentLatency(JNIEnv*, jobject);
+## Development Guide
+
+### Adding a New DSP Module
+1. Create C++ header/source
+2. Implement in native-lib.cpp (JNI + audio callback)
+3. Declare JNI in MainActivity.kt
+4. Create ViewModel
+5. Create UI Screen
+6. Add to navigation
+7. Write tests
+
+### Debugging
+```bash
+adb logcat -s NativeAudioBridge:I
 ```
 
----
+## License
 
-### 🖼️ Kotlin UI (Jetpack Compose)
+Copyright © 2025 SoundArch Contributors
 
-#### `MainActivity.kt`
+Licensed under the MIT License.
 
-* Entry point, requests permissions
-* Hosts navigation and content setup
+Third-Party: Oboe, TensorFlow Lite, Compose, Hilt (Apache 2.0)
 
-#### `ui/screens/`
+## Contact & Support
 
-* `HomeScreen.kt` → Displays latency, EQ access
-* `EqualizerScreen.kt` → 10-band EQ sliders
-* `BluetoothScreen.kt`, `AudioTestScreen.kt` → placeholders
-
-#### `components/`
-
-* `LatencyIndicator` – visual ring showing ms delay
-* `AudioVisualizer` – simple waveform based on RMS
-* `MetricsCard` – summary of runtime audio stats
-
-#### `viewmodels/AudioViewModel.kt`
-
-* Maintains state using `StateFlow`
-* Triggers native methods (start, stop, update EQ)
-
-```kotlin
-val latency: StateFlow<Double>
-val rmsLevel: StateFlow<Float>
-val eqProfile: StateFlow<FloatArray>
-```
+- GitHub Issues: https://github.com/Baal-1981/SoundArch.git
+- Documentation: See DESIGN_SYSTEM.md, DSP_TEST_SUITE.md, UI_TEST_SUITE.md
 
 ---
 
-### 📊 Runtime Metrics
+SoundArch v2.0 - Professional Real-Time Audio DSP for Android
 
-* `latency` – JNI call
-* `rmsLevel` – computed per block
-* `eqProfile` – pushed to C++
+Status: ✅ Production-Ready (after signing release APK)
 
----
-
-### 🧪 Testing
-
-* `AudioViewModelTest.kt` – Compose lifecycle + toggle
-* C++ planned: GoogleTest for DSP correctness
-* JNI: instrumentation via AndroidTest (future)
-
----
-
-### 📅 Roadmap
-
-* [x] EQ + Compressor
-* [ ] Limiter + Psycho/VAD
-* [ ] Adaptive ML tuning
-* [ ] Bluetooth routing + beamforming
-
----
-
-### 🙏 Credits
-
-Developed by **Baal-1981**, in collaboration with GPT-4o, targeting audio DSP for hearing sciences, embedded ML and real-time mobile apps.
-
----
-
-## 🇫🇷 VERSION FRANÇAISE — SPÉCIFICATION TECHNIQUE
-
-[Traduction complète identique à venir dans le bloc suivant pour assurer la continuité, complète et aussi détaillée.]
+Last Updated: October 11, 2025

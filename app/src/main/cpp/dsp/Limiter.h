@@ -18,6 +18,9 @@ namespace soundarch::dsp {
         // Traitement temps réel
         float process(float input) noexcept;
 
+        // ✅ OPTIMIZED: Block processing for better performance
+        void processBlock(const float* input, float* output, int numFrames) noexcept;
+
         // Reset state
         void reset() noexcept;
 
@@ -25,6 +28,9 @@ namespace soundarch::dsp {
         [[nodiscard]] float getGainReduction() const noexcept { return gainReduction_; }
 
     private:
+        // ✅ SAFETY: Soft clipper to prevent inter-sample peaks
+        static float softClip(float x) noexcept;
+
         float sampleRate_;
 
         // Paramètres
