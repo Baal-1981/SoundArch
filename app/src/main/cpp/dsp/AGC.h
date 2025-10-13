@@ -21,6 +21,10 @@ namespace soundarch::dsp {
 
         // Traitement
         float process(float input) noexcept;
+
+        // ✅ OPTIMIZED: Block processing for better performance
+        void processBlock(const float* input, float* output, int numFrames) noexcept;
+
         void reset() noexcept;
 
         // Monitoring (pour UI)

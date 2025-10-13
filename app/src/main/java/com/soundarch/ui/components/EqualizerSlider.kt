@@ -7,19 +7,32 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.soundarch.ui.testing.UiIds
+import com.soundarch.ui.theme.AppColors
 
 @Composable
 fun EqualizerSlider(
     gain: Float,
     frequency: Float,
-    onGainChange: (Float) -> Unit
+    onGainChange: (Float) -> Unit,
+    bandIndex: Int = -1,  // Optional: band index for test tags
+    // ⭐ NEW: Optional test tag parameter for value text
+    valueTextTestTag: String? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 12.dp),
+            .padding(vertical = 8.dp, horizontal = 12.dp)
+            .then(
+                if (bandIndex >= 0) {
+                    Modifier.testTag("eq_band_slider_$bandIndex")
+                } else {
+                    Modifier
+                }
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -32,7 +45,7 @@ fun EqualizerSlider(
         Text(
             text = freqLabel,
             style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
-            color = Color(0xFF90CAF9),  // Bleu clair
+            color = AppColors.Accent,  // Bleu clair
             modifier = Modifier.width(70.dp)
         )
 
@@ -45,14 +58,14 @@ fun EqualizerSlider(
             },
             valueRange = -12f..12f,
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFF2196F3),        // Bleu
-                activeTrackColor = Color(0xFF64B5F6),  // Bleu clair
-                inactiveTrackColor = Color(0xFF424242) // Gris foncé
+                thumbColor = AppColors.Info,        // Bleu
+                activeTrackColor = AppColors.Info.copy(alpha = 0.7f),  // Bleu clair
+                inactiveTrackColor = AppColors.GridLines // Gris foncé
             ),
             modifier = Modifier.weight(1f)  // Prend tout l'espace disponible
         )
 
-        // 📊 Label gain (droite)
+        // 📊 Label gain (droite) - VALUE TEXT
         val gainText = when {
             gain > 0 -> "+${String.format("%.1f", gain)}"
             else -> String.format("%.1f", gain)
@@ -62,11 +75,19 @@ fun EqualizerSlider(
             text = "$gainText dB",
             style = MaterialTheme.typography.labelLarge.copy(fontSize = 14.sp),
             color = when {
-                gain > 0 -> Color(0xFF4CAF50)   // Vert si boost
-                gain < 0 -> Color(0xFFF44336)   // Rouge si cut
-                else -> Color.Gray               // Gris si 0dB
+                gain > 0 -> AppColors.Success   // Vert si boost
+                gain < 0 -> AppColors.Error   // Rouge si cut
+                else -> AppColors.TextSecondary               // Gris si 0dB
             },
-            modifier = Modifier.width(60.dp)
+            modifier = Modifier
+                .width(60.dp)
+                .then(
+                    if (valueTextTestTag != null) {
+                        Modifier.testTag(valueTextTestTag)
+                    } else {
+                        Modifier
+                    }
+                )
         )
     }
 }
