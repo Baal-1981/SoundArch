@@ -96,7 +96,7 @@ class JNIBridgeIntegrationTest {
 
         testCases.forEach { (gains, description) ->
             mainActivity.setEqBands(gains)
-            Thread.sleep(50)
+            // No sleep needed - JNI call is synchronous
             android.util.Log.i(TAG, "✅ setEqBands(): $description")
         }
     }
@@ -118,49 +118,49 @@ class JNIBridgeIntegrationTest {
         // Test setAGCTargetLevel
         listOf(-30.0f, -20.0f, -10.0f).forEach { target ->
             mainActivity.setAGCTargetLevel(target)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCTargetLevel(Float)")
 
         // Test setAGCMaxGain
         listOf(20.0f, 25.0f, 30.0f).forEach { max ->
             mainActivity.setAGCMaxGain(max)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCMaxGain(Float)")
 
         // Test setAGCMinGain
         listOf(-10.0f, -5.0f, 0.0f).forEach { min ->
             mainActivity.setAGCMinGain(min)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCMinGain(Float)")
 
         // Test setAGCAttackTime
         listOf(0.05f, 0.1f, 0.2f).forEach { attack ->
             mainActivity.setAGCAttackTime(attack)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCAttackTime(Float)")
 
         // Test setAGCReleaseTime
         listOf(0.3f, 0.5f, 1.0f).forEach { release ->
             mainActivity.setAGCReleaseTime(release)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCReleaseTime(Float)")
 
         // Test setAGCNoiseThreshold
         listOf(-60.0f, -55.0f, -50.0f).forEach { threshold ->
             mainActivity.setAGCNoiseThreshold(threshold)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCNoiseThreshold(Float)")
 
         // Test setAGCWindowSize
         listOf(0.05f, 0.1f, 0.2f).forEach { window ->
             mainActivity.setAGCWindowSize(window)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setAGCWindowSize(Float)")
 
@@ -185,13 +185,13 @@ class JNIBridgeIntegrationTest {
 
         // Test setCompressor (5 parameters)
         mainActivity.setCompressor(-20.0f, 4.0f, 5.0f, 50.0f, 0.0f)
-        Thread.sleep(100)
+        // No sleep needed - JNI parameter setting is synchronous
         android.util.Log.i(TAG, "✅ setCompressor(threshold, ratio, attack, release, makeup)")
 
         // Test setCompressorKnee
         listOf(0.0f, 3.0f, 6.0f).forEach { knee ->
             mainActivity.setCompressorKnee(knee)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
         }
         android.util.Log.i(TAG, "✅ setCompressorKnee(Float)")
 
@@ -201,7 +201,7 @@ class JNIBridgeIntegrationTest {
         android.util.Log.i(TAG, "✅ setCompressorEnabled(Boolean)")
 
         // Test getCompressorGainReduction
-        Thread.sleep(500) // Allow time for processing
+        Thread.sleep(200) // Reduced from 500ms - compressor adapts quickly
         val gr = mainActivity.getCompressorGainReduction()
         assertThat(gr).isNotNaN()
         assertThat(gr).isAtLeast(0.0f)
@@ -218,7 +218,7 @@ class JNIBridgeIntegrationTest {
 
         // Test setLimiter
         mainActivity.setLimiter(-1.0f, 50.0f, 0.0f)
-        Thread.sleep(100)
+        // No sleep needed - JNI parameter setting is synchronous
         android.util.Log.i(TAG, "✅ setLimiter(threshold, release, lookahead)")
 
         // Test setLimiterEnabled
@@ -227,7 +227,7 @@ class JNIBridgeIntegrationTest {
         android.util.Log.i(TAG, "✅ setLimiterEnabled(Boolean)")
 
         // Test getLimiterGainReduction
-        Thread.sleep(500)
+        Thread.sleep(200) // Reduced from 500ms - limiter responds quickly
         val gr = mainActivity.getLimiterGainReduction()
         assertThat(gr).isNotNaN()
         assertThat(gr).isAtLeast(0.0f)
@@ -245,7 +245,7 @@ class JNIBridgeIntegrationTest {
         // Test setVoiceGain
         listOf(-6.0f, 0.0f, +6.0f, +12.0f).forEach { gain ->
             mainActivity.setVoiceGain(gain)
-            Thread.sleep(50)
+            // No sleep needed - JNI parameter setting is synchronous
             val actual = mainActivity.getVoiceGain()
             assertThat(actual).isWithin(0.1f).of(gain.coerceIn(-12.0f, 12.0f))
             android.util.Log.i(TAG, "setVoiceGain(${String.format("%+.1f", gain)}dB) → ${String.format("%+.1f", actual)}dB")
@@ -288,11 +288,11 @@ class JNIBridgeIntegrationTest {
             residualBoostDb = 0.0f,
             artifactSuppress = 1.0f
         )
-        Thread.sleep(100)
+        // No sleep needed - JNI parameter setting is synchronous
         android.util.Log.i(TAG, "✅ setNoiseCancellerParams(7 params)")
 
         // Test getNoiseCancellerNoiseFloor
-        Thread.sleep(500) // Allow time for noise estimation
+        Thread.sleep(200) // Reduced from 500ms - noise floor estimates quickly
         val floor = mainActivity.getNoiseCancellerNoiseFloor()
         assertThat(floor).isAtMost(0.0f) // Noise floor should be negative
         android.util.Log.i(TAG, "✅ getNoiseCancellerNoiseFloor() → ${String.format("%.1f", floor)}dB")
@@ -315,12 +315,12 @@ class JNIBridgeIntegrationTest {
         android.util.Log.i(TAG, "TEST: Performance monitoring")
 
         // Test getCPUUsage (needs multiple samples)
-        Thread.sleep(1000) // First call initializes baseline
+        Thread.sleep(500) // Reduced from 1000ms - First call initializes baseline
         val cpu1 = mainActivity.getCPUUsage()
         assertThat(cpu1).isAtLeast(0.0f)
         assertThat(cpu1).isAtMost(100.0f)
 
-        Thread.sleep(1000) // Second call returns actual usage
+        Thread.sleep(500) // Reduced from 1000ms - Second call returns actual usage
         val cpu2 = mainActivity.getCPUUsage()
         assertThat(cpu2).isAtLeast(0.0f)
         assertThat(cpu2).isAtMost(100.0f)
@@ -343,7 +343,7 @@ class JNIBridgeIntegrationTest {
         android.util.Log.i(TAG, "TEST: Latency monitoring")
 
         // Allow time for latency stats to accumulate
-        Thread.sleep(500)
+        Thread.sleep(200) // Reduced from 500ms - latency stats update quickly
 
         // Test getLatencyInputMs
         val inputMs = mainActivity.getLatencyInputMs()
@@ -407,7 +407,7 @@ class JNIBridgeIntegrationTest {
 
         // Test multiple samples
         repeat(5) { i ->
-            Thread.sleep(100)
+            Thread.sleep(50) // Reduced from 100ms - faster sampling
 
             // Test getPeakDb
             val peak = mainActivity.getPeakDb()
@@ -467,7 +467,7 @@ class JNIBridgeIntegrationTest {
         mainActivity.setAGCTargetLevel(-100.0f)
         mainActivity.setAGCMaxGain(100.0f)
         mainActivity.setCompressor(-100.0f, 100.0f, 0.1f, 5000.0f, 50.0f)
-        Thread.sleep(100)
+        // No sleep needed - JNI parameter setting is synchronous
         android.util.Log.i(TAG, "✅ Extreme parameter values handled")
     }
 
